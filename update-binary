@@ -1,0 +1,62 @@
+#!/sbin/sh
+
+OUTFD=/proc/self/fd/$2
+#set -e
+ui_print() {
+	until [ ! "$1" ];do
+		echo -e "ui_print $1\n" >> $OUTFD
+		shift
+	done
+}
+ui_print "..........Checking Start........"
+getprop_fun() {
+	if [ -e /sbin/getprop ];then
+		val=`getprop $1`
+		echo $val
+	else
+		echo "No"
+	fi
+}
+ui_print "...........Device Checking Section.........."
+if [ `getprop_fun ro.product.device` = "titan" ] || [ `getprop_fun ro.build.product` = "titan" ];then
+	ui_print `getprop_fun ro.product.device`
+else
+	ui_print "Devices check Faild!!!!!!!!!"
+	exit 
+fi
+ui_print "...........Bootloader Checking Section.........."
+if [ `getprop_fun ro.bootloader` = "0x4887" ];then
+	#ui_print "SuccessFully Check"
+	ui_print `getprop_fun ro.bootloader`
+else
+	ui_print "Bootloader Falid!!!!!!!"
+	exit 
+fi
+
+ui_print "------Image File searching system------------"
+fstb=/etc/recovery.fstab
+#[ -e $fstb ] && ui_print "File Found" || ui_print "File Not Found"
+if [ -e $fstb ];then
+	ui_print "Image File Found"
+	bootimage="$(grep -E "\b/boot\b" $fstb | grep -oE "/dev[a-zA-Z0-9_/.-]*")"
+	if [ -z $bootimage ];then
+		ui_print "regualar Expression can't find bootImage path"
+		exit
+	else
+		ui_print "Image file path :" $bootimage
+	fi
+else
+	ui_print "Image File can't Find"
+	exit
+fi
+
+ui_print "------Checking Image File Link or Not--------"
+if [ ! -z $bootimage ];then
+	link="$(readlink $bootimage)"
+fi
+
+if [ ! -z $link ];then
+	ui_print "Image File Linked with :" $link
+else
+	ui_print "No Link Found with image file"
+fi
